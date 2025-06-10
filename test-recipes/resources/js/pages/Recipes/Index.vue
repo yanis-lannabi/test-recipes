@@ -1,121 +1,3 @@
-<template>
-  <Layout>
-    <v-container>
-      <h1 class="text-h3 mb-6">Nos Recettes</h1>
-
-      <!-- Barre de recherche -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="6">
-          <v-text-field
-            v-model="searchQuery"
-            label="Rechercher par ingrédient"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            @input="handleSearch"
-            @click:clear="clearSearch"
-            placeholder="Ex: tomate, fromage, chocolat..."
-          ></v-text-field>
-        </v-col>
-      </v-row>
-
-      <v-alert v-if="message" type="info" class="mb-6">
-        {{ message }}
-      </v-alert>
-
-      <v-alert v-if="Object.keys(formErrors).length > 0" type="error" class="mb-6">
-        <div v-for="(error, field) in formErrors" :key="field" class="mb-1">
-          {{ error }}
-        </div>
-      </v-alert>
-
-      <v-row v-if="recipes.data && recipes.data.length > 0">
-        <v-col v-for="recipe in recipes.data" :key="recipe.id" cols="12" md="4">
-          <v-card>
-            <v-card-title>{{ recipe.title }}</v-card-title>
-            <v-card-text>
-              <p>{{ recipe.description }}</p>
-              <p class="text-caption">Ingrédients: {{ recipe.ingredients }}</p>
-            </v-card-text>
-            <v-card-actions>
-              <v-btn color="primary" :to="`/recipes/${recipe.id}`">
-                Voir la recette
-              </v-btn>
-            </v-card-actions>
-            <v-card-actions>
-              <v-btn color="primary" @click="openEditModal(recipe)">
-                Modifier
-              </v-btn>
-            </v-card-actions>
-            <v-card-actions>
-              <v-btn color="error" @click="deleteRecipe(recipe.id)">
-                Supprimer
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <v-alert v-else-if="recipes.data && recipes.data.length === 0" type="info" class="mb-6">
-        Aucune recette trouvée.
-      </v-alert>
-
-      <!-- Pagination -->
-      <div class="text-center mt-6" v-if="recipes.data && recipes.data.length > 0">
-        <v-pagination v-model="currentPage" :length="recipes.last_page"
-          @update:model-value="handlePageChange"></v-pagination>
-      </div>
-
-      <!-- Modal de modification -->
-      <v-dialog v-model="showEditModal" max-width="600px">
-        <v-card>
-          <v-card-title class="text-h5">
-            Modifier la recette
-          </v-card-title>
-
-          <v-card-text>
-            <v-form @submit.prevent="submitEditForm">
-              <v-text-field 
-                v-model="editForm.title" 
-                label="Titre" 
-                required
-                :error-messages="formErrors.title"
-                @input="clearError('title')"
-              ></v-text-field>
-
-              <v-textarea 
-                v-model="editForm.description" 
-                label="Description" 
-                required
-                :error-messages="formErrors.description"
-                @input="clearError('description')"
-              ></v-textarea>
-
-              <v-textarea 
-                v-model="editForm.ingredients" 
-                label="Ingrédients" 
-                required
-                :error-messages="formErrors.ingredients"
-                @input="clearError('ingredients')"
-              ></v-textarea>
-            </v-form>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn color="grey-darken-1" variant="text" @click="closeModal">
-              Annuler
-            </v-btn>
-            <v-btn color="primary" :loading="isSubmitting" @click="submitEditForm">
-              Enregistrer
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-    </v-container>
-  </Layout>
-</template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -233,6 +115,123 @@ const deleteRecipe = async (id: number) => {
 }
 </script>
 
+<template>
+  <Layout>
+    <v-container>
+      <h1 class="text-h3 mb-6">Nos Recettes</h1>
+
+      <!-- Barre de recherche -->
+      <v-row class="mb-6">
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="searchQuery"
+            label="Rechercher par ingrédient"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            variant="outlined"
+            @input="handleSearch"
+            @click:clear="clearSearch"
+            placeholder="Ex: tomate, fromage, chocolat..."
+          ></v-text-field>
+        </v-col>
+      </v-row>
+
+      <v-alert v-if="message" type="info" class="mb-6">
+        {{ message }}
+      </v-alert>
+
+      <v-alert v-if="Object.keys(formErrors).length > 0" type="error" class="mb-6">
+        <div v-for="(error, field) in formErrors" :key="field" class="mb-1">
+          {{ error }}
+        </div>
+      </v-alert>
+
+      <v-row v-if="recipes.data && recipes.data.length > 0">
+        <v-col v-for="recipe in recipes.data" :key="recipe.id" cols="12" md="4">
+          <v-card>
+            <v-card-title>{{ recipe.title }}</v-card-title>
+            <v-card-text>
+              <p>{{ recipe.description }}</p>
+              <p class="text-caption">Ingrédients: {{ recipe.ingredients }}</p>
+            </v-card-text>
+            <v-card-actions>
+              <v-btn color="primary" :to="`/recipes/${recipe.id}`">
+                Voir la recette
+              </v-btn>
+            </v-card-actions>
+            <v-card-actions>
+              <v-btn color="primary" @click="openEditModal(recipe)">
+                Modifier
+              </v-btn>
+            </v-card-actions>
+            <v-card-actions>
+              <v-btn color="error" @click="deleteRecipe(recipe.id)">
+                Supprimer
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <v-alert v-else-if="recipes.data && recipes.data.length === 0" type="info" class="mb-6">
+        Aucune recette trouvée.
+      </v-alert>
+
+      <!-- Pagination -->
+      <div class="text-center mt-6" v-if="recipes.data && recipes.data.length > 0">
+        <v-pagination v-model="currentPage" :length="recipes.last_page"
+          @update:model-value="handlePageChange"></v-pagination>
+      </div>
+
+      <!-- Modal de modification -->
+      <v-dialog v-model="showEditModal" max-width="600px">
+        <v-card>
+          <v-card-title class="text-h5">
+            Modifier la recette
+          </v-card-title>
+
+          <v-card-text>
+            <v-form @submit.prevent="submitEditForm">
+              <v-text-field 
+                v-model="editForm.title" 
+                label="Titre" 
+                required
+                :error-messages="formErrors.title"
+                @input="clearError('title')"
+              ></v-text-field>
+
+              <v-textarea 
+                v-model="editForm.description" 
+                label="Description" 
+                required
+                :error-messages="formErrors.description"
+                @input="clearError('description')"
+              ></v-textarea>
+
+              <v-textarea 
+                v-model="editForm.ingredients" 
+                label="Ingrédients" 
+                required
+                :error-messages="formErrors.ingredients"
+                @input="clearError('ingredients')"
+              ></v-textarea>
+            </v-form>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="grey-darken-1" variant="text" @click="closeModal">
+              Annuler
+            </v-btn>
+            <v-btn color="primary" :loading="isSubmitting" @click="submitEditForm">
+              Enregistrer
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-container>
+  </Layout>
+</template>
 <style scoped>
 .v-alert {
   margin-bottom: 1rem;

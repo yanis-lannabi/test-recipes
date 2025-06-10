@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import Layout from '@/components/Layout.vue'
+</script>
+
 <template>
   <Layout>
     <v-container class="d-flex align-center justify-center" style="min-height: 60vh;">
@@ -21,9 +25,6 @@
   </Layout>
 </template>
 
-<script setup lang="ts">
-import Layout from '@/components/Layout.vue'
-</script>
 
 <style scoped>
 /* Styles pour la page 404 */
