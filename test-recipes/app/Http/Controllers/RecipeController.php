@@ -64,7 +64,7 @@ class RecipeController extends Controller
             return response()->json([
                 'message' => 'Recette modifiée avec succès !',
                 'recipe' => $recipe
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Une erreur est survenue lors de la modification de la recette.'], 500);
         }
@@ -76,7 +76,7 @@ class RecipeController extends Controller
             $recipe = Recipe::findOrFail($id);
             $recipe->delete();
             
-            return response()->json(['message' => 'Recette supprimée avec succès !']);
+            return response()->json(['message' => 'Recette supprimée avec succès !'], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Une erreur est survenue lors de la suppression de la recette.'], 500);
         }
