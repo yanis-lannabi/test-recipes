@@ -54,17 +54,32 @@
 
         <v-card-text>
           <v-form @submit.prevent="submitForm">
-            <v-text-field v-model="form.title" label="Titre" required></v-text-field>
+            <v-text-field 
+              v-model="form.title" 
+              label="Titre" 
+              required
+              :error-messages="formErrors.title"
+            ></v-text-field>
 
-            <v-textarea v-model="form.description" label="Description" required></v-textarea>
+            <v-textarea 
+              v-model="form.description" 
+              label="Description" 
+              required
+              :error-messages="formErrors.description"
+            ></v-textarea>
 
-            <v-textarea v-model="form.ingredients" label="Ingrédients" required></v-textarea>
+            <v-textarea 
+              v-model="form.ingredients" 
+              label="Ingrédients" 
+              required
+              :error-messages="formErrors.ingredients"
+            ></v-textarea>
           </v-form>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" @click="showCreateModal = false">
+          <v-btn color="grey-darken-1" variant="text" @click="closeCreateModal">
             Annuler
           </v-btn>
           <v-btn color="primary" :loading="isSubmitting" @click="submitForm">
@@ -84,29 +99,40 @@ import axios from 'axios'
 const router = useRouter()
 const showCreateModal = ref(false)
 const isSubmitting = ref(false)
+const formErrors = ref<Record<string, string>>({})
 const form = ref({
   title: '',
   description: '',
   ingredients: ''
 })
 
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  formErrors.value = {}
+  form.value = {
+    title: '',
+    description: '',
+    ingredients: ''
+  }
+}
+
 const submitForm = async () => {
   isSubmitting.value = true
+  formErrors.value = {}
   try {
     await axios.post('/api/recipes', form.value)
-    showCreateModal.value = false
-    form.value = {
-      title: '',
-      description: '',
-      ingredients: ''
-    }
+    closeCreateModal()
     isSubmitting.value = false
     // Rafraîchir la page des recettes si on y est
     if (router.currentRoute.value.name === 'recipes') {
       router.go(0)
     }
   } catch (err: any) {
-    console.error('Erreur lors de la création:', err)
+    if (err.response && err.response.status === 422 && err.response.data.errors) {
+      formErrors.value = err.response.data.errors
+    } else {
+      console.error('Erreur lors de la création:', err)
+    }
     isSubmitting.value = false
   }
 }

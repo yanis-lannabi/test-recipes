@@ -174,7 +174,7 @@ const submitEditForm = async () => {
     isSubmitting.value = false
     fetchRecipes(currentPage.value)
   } catch (err: any) {
-    if (err.response && err.response.data && err.response.data.errors) {
+    if (err.response && err.response.status === 422 && err.response.data.errors) {
       formErrors.value = err.response.data.errors
     } else {
       message.value = 'Erreur lors de la modification.'

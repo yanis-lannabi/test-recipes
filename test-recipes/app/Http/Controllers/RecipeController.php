@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Recipe;
+use App\Http\Requests\StoreRecipeRequest;
+use App\Http\Requests\UpdateRecipeRequest;
 
 class RecipeController extends Controller
 {
@@ -30,53 +32,30 @@ class RecipeController extends Controller
         }
     }
 
-    public function store(Request $request)
+    public function store(StoreRecipeRequest $request)
     {
         try {
-            $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'description' => 'required|string',
-                'ingredients' => 'required|string'
-            ]);
-
-            $recipe = Recipe::create($validated);
+            $recipe = Recipe::create($request->validated());
             
             return response()->json([
                 'message' => 'Recette créée avec succès !',
                 'recipe' => $recipe
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Erreur de validation',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Une erreur est survenue lors de la création de la recette.'], 500);
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateRecipeRequest $request, $id)
     {
         try {
             $recipe = Recipe::findOrFail($id);
-
-            $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'description' => 'required|string',
-                'ingredients' => 'required|string',
-            ]);
-
-            $recipe->update($validated);
+            $recipe->update($request->validated());
 
             return response()->json([
                 'message' => 'Recette modifiée avec succès !',
                 'recipe' => $recipe
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Erreur de validation',
-                'errors' => $e->errors()
-            ], 422);
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Une erreur est survenue lors de la modification de la recette.'], 500);
         }
@@ -88,7 +67,7 @@ class RecipeController extends Controller
             $recipe = Recipe::findOrFail($id);
             $recipe->delete();
             
-            return response()->json(['message' => 'Recette supprimée avec succès !'], 204);
+            return response()->json(['message' => 'Recette supprimée avec succès !']);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Une erreur est survenue lors de la suppression de la recette.'], 500);
         }
