@@ -2,21 +2,20 @@
 
 use App\Http\Controllers\RecipeController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome');
-})->name('home');
+// Route API pour les recettes
+Route::prefix('api')->group(function () {
+    Route::get('recipes', [RecipeController::class, 'index']);
+    Route::get('recipes/{id}', [RecipeController::class, 'show']);
+    Route::post('recipes', [RecipeController::class, 'store']);
+    Route::put('recipes/{id}', [RecipeController::class, 'update']);
+    Route::delete('recipes/{id}', [RecipeController::class, 'destroy']);
+});
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::get('recipes', [RecipeController::class, 'index'])->name('recipes');
-Route::get('recipes/{id}', [RecipeController::class, 'show'])->name('recipe');
-Route::post('recipes', [RecipeController::class, 'store'])->name('recipe.store');
-Route::put('recipes/{id}', [RecipeController::class, 'update'])->name('recipe.update');
-Route::delete('recipes/{id}', [RecipeController::class, 'destroy'])->name('recipe.destroy');
+// Route pour servir la SPA Vue.js
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

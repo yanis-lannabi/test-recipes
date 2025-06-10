@@ -14,7 +14,7 @@ import Layout from '@/components/Layout.vue'
                         <p class="text-h6 text-medium-emphasis mb-6">
                             Explorez notre collection de recettes et inspirez-vous des meilleurs chefs.
                         </p>
-                        <v-btn size="large" color="primary" class="mr-4" href="/recipes">
+                        <v-btn size="large" color="primary" class="mr-4" :to="{ name: 'recipes' }">
                             Explorer les recettes
                         </v-btn>
                     </v-container>

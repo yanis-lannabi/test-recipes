@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\Recipe;
 
 class RecipeController extends Controller
@@ -15,26 +14,24 @@ class RecipeController extends Controller
                 ->paginate(9)
                 ->withQueryString();
 
-            return Inertia::render('Recipes/Index', [
-                'recipes' => $recipes,
-                'filters' => request()->only(['search', 'sort']),
-                'message' => Recipe::count() === 0 ? 'Aucune recette trouvée.' : null
-            ]);
+            return response()->json($recipes);
         } catch (\Exception $e) {
-            return back()->with('error', 'Une erreur est survenue lors de la récupération des recettes.');
+            return response()->json(['error' => 'Une erreur est survenue lors de la récupération des recettes.'], 500);
         }
     }
 
     public function show($id)
     {
-        $recipe = Recipe::findOrFail($id);
-        return Inertia::render('Recipes/Recipe', ['recipe' => $recipe]);
+        try {
+            $recipe = Recipe::findOrFail($id);
+            return response()->json($recipe);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Recette non trouvée.'], 404);
+        }
     }
 
     public function store(Request $request)
     {
-        \Log::info('Données reçues:', $request->all());
-
         try {
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
@@ -42,38 +39,47 @@ class RecipeController extends Controller
                 'ingredients' => 'required|string'
             ]);
 
-            \Log::info('Données validées:', $validated);
-
             $recipe = Recipe::create($validated);
             
-            \Log::info('Recette créée:', $recipe->toArray());
-
-            return redirect()->route('recipes')
-                ->with('success', 'Recette créée avec succès !');
+            return response()->json([
+                'message' => 'Recette créée avec succès !',
+                'recipe' => $recipe
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la création:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return back()->with('error', 'Une erreur est survenue lors de la création de la recette.');
+            return response()->json(['error' => 'Une erreur est survenue lors de la création de la recette.'], 500);
         }
     }
 
     public function update(Request $request, $id)
     {
-        $recipe = Recipe::findOrFail($id);
+        try {
+            $recipe = Recipe::findOrFail($id);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'ingredients' => 'required|string',
-        ]);
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'ingredients' => 'required|string',
+            ]);
 
-        $recipe->update($validated);
+            $recipe->update($validated);
 
-        return redirect()->route('recipes')
-            ->with('message', 'Recette modifiée avec succès !');
+            return response()->json([
+                'message' => 'Recette modifiée avec succès !',
+                'recipe' => $recipe
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Une erreur est survenue lors de la modification de la recette.'], 500);
+        }
     }
 
     public function destroy($id)
@@ -82,10 +88,9 @@ class RecipeController extends Controller
             $recipe = Recipe::findOrFail($id);
             $recipe->delete();
             
-            return redirect()->route('recipes')
-                ->with('success', 'Recette supprimée avec succès !');
+            return response()->json(['message' => 'Recette supprimée avec succès !'], 204);
         } catch (\Exception $e) {
-            return back()->with('error', 'Une erreur est survenue lors de la suppression de la recette.');
+            return response()->json(['error' => 'Une erreur est survenue lors de la suppression de la recette.'], 500);
         }
     }
 }

@@ -7,6 +7,12 @@
         {{ message }}
       </v-alert>
 
+      <v-alert v-if="Object.keys(formErrors).length > 0" type="error" class="mb-6">
+        <div v-for="(error, field) in formErrors" :key="field" class="mb-1">
+          {{ error }}
+        </div>
+      </v-alert>
+
       <v-row v-if="recipes.data && recipes.data.length > 0">
         <v-col v-for="recipe in recipes.data" :key="recipe.id" cols="12" md="4">
           <v-card>
@@ -16,7 +22,7 @@
               <p class="text-caption">Ingrédients: {{ recipe.ingredients }}</p>
             </v-card-text>
             <v-card-actions>
-              <v-btn color="primary" @click="router.visit(`/recipes/${recipe.id}`)">
+              <v-btn color="primary" :to="`/recipes/${recipe.id}`">
                 Voir la recette
               </v-btn>
             </v-card-actions>
@@ -34,6 +40,10 @@
         </v-col>
       </v-row>
 
+      <v-alert v-else-if="recipes.data && recipes.data.length === 0" type="info" class="mb-6">
+        Aucune recette trouvée.
+      </v-alert>
+
       <!-- Pagination -->
       <div class="text-center mt-6" v-if="recipes.data && recipes.data.length > 0">
         <v-pagination v-model="currentPage" :length="recipes.last_page"
@@ -49,17 +59,35 @@
 
           <v-card-text>
             <v-form @submit.prevent="submitEditForm">
-              <v-text-field v-model="editForm.title" label="Titre" required></v-text-field>
+              <v-text-field 
+                v-model="editForm.title" 
+                label="Titre" 
+                required
+                :error-messages="formErrors.title"
+                @input="clearError('title')"
+              ></v-text-field>
 
-              <v-textarea v-model="editForm.description" label="Description" required></v-textarea>
+              <v-textarea 
+                v-model="editForm.description" 
+                label="Description" 
+                required
+                :error-messages="formErrors.description"
+                @input="clearError('description')"
+              ></v-textarea>
 
-              <v-textarea v-model="editForm.ingredients" label="Ingrédients" required></v-textarea>
+              <v-textarea 
+                v-model="editForm.ingredients" 
+                label="Ingrédients" 
+                required
+                :error-messages="formErrors.ingredients"
+                @input="clearError('ingredients')"
+              ></v-textarea>
             </v-form>
           </v-card-text>
 
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="grey-darken-1" variant="text" @click="showEditModal = false">
+            <v-btn color="grey-darken-1" variant="text" @click="closeModal">
               Annuler
             </v-btn>
             <v-btn color="primary" :loading="isSubmitting" @click="submitEditForm">
@@ -73,25 +101,21 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 import Layout from '@/components/Layout.vue'
 
-const props = defineProps<{
-  recipes: {
-    data: Array<{
-      id: number
-      title: string
-      description: string
-      ingredients: string
-    }>
-    current_page: number
-    last_page: number
-  }
-  message?: string
-}>()
+const router = useRouter()
 
-const currentPage = ref(props.recipes.current_page)
+const recipes = ref({
+  data: [],
+  current_page: 1,
+  last_page: 1
+})
+const message = ref('')
+const formErrors = ref<Record<string, string>>({})
+const currentPage = ref(1)
 const showEditModal = ref(false)
 const isSubmitting = ref(false)
 const editForm = ref({
@@ -101,8 +125,22 @@ const editForm = ref({
   ingredients: ''
 })
 
+const fetchRecipes = async (page = 1) => {
+  try {
+    const res = await axios.get(`/api/recipes?page=${page}`)
+    recipes.value = res.data
+    currentPage.value = res.data.current_page
+  } catch (err: any) {
+    message.value = 'Erreur lors du chargement des recettes.'
+  }
+}
+
+onMounted(() => {
+  fetchRecipes()
+})
+
 const handlePageChange = (page: number) => {
-  router.get(`/recipes?page=${page}`)
+  fetchRecipes(page)
 }
 
 const openEditModal = (recipe: any) => {
@@ -113,26 +151,52 @@ const openEditModal = (recipe: any) => {
     ingredients: recipe.ingredients
   }
   showEditModal.value = true
+  formErrors.value = {}
 }
 
-const submitEditForm = () => {
+const closeModal = () => {
+  showEditModal.value = false
+  formErrors.value = {}
+}
+
+const clearError = (field: string) => {
+  if (formErrors.value[field]) {
+    delete formErrors.value[field]
+  }
+}
+
+const submitEditForm = async () => {
   isSubmitting.value = true
-
-  router.put(`/recipes/${editForm.value.id}`, editForm.value, {
-    onSuccess: () => {
-      showEditModal.value = false
-      isSubmitting.value = false
-    },
-    onError: (errors) => {
-      console.error('Erreur lors de la modification:', errors)
-      isSubmitting.value = false
+  formErrors.value = {}
+  try {
+    await axios.put(`/api/recipes/${editForm.value.id}`, editForm.value)
+    showEditModal.value = false
+    isSubmitting.value = false
+    fetchRecipes(currentPage.value)
+  } catch (err: any) {
+    if (err.response && err.response.data && err.response.data.errors) {
+      formErrors.value = err.response.data.errors
+    } else {
+      message.value = 'Erreur lors de la modification.'
     }
-  })
+    isSubmitting.value = false
+  }
 }
 
-const deleteRecipe = (id: number) => {
+const deleteRecipe = async (id: number) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer cette recette ?')) {
-    router.delete(`/recipes/${id}`)
+    try {
+      await axios.delete(`/api/recipes/${id}`)
+      fetchRecipes(currentPage.value)
+    } catch (err) {
+      message.value = 'Erreur lors de la suppression.'
+    }
   }
 }
 </script>
+
+<style scoped>
+.v-alert {
+  margin-bottom: 1rem;
+}
+</style>

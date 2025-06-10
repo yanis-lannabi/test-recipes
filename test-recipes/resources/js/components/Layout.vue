@@ -3,13 +3,13 @@
     <v-app-bar color="primary" elevation="0">
       <v-container class="d-flex align-center">
         <v-app-bar-title class="text-h5 font-weight-bold">
-          <Link href="/">
+          <router-link to="/" class="text-decoration-none text-white">
           <v-icon>mdi-chef-hat</v-icon>
           Les recettes de Fullstack
-          </Link>
+          </router-link>
         </v-app-bar-title>
         <v-spacer></v-spacer>
-        <v-btn color="white" href="/recipes">
+        <v-btn color="white" :to="{ name: 'recipes' }">
           Voir les recettes
         </v-btn>
         <v-btn color="white" @click="showCreateModal = true">
@@ -34,9 +34,9 @@
           <v-col cols="12" md="4">
             <h3 class="text-h6 font-weight-bold mb-4">Liens Rapides</h3>
             <v-list density="compact" class="bg-transparent">
-              <Link href="/recipes" class="text-decoration-none">
+              <router-link to="/recipes" class="text-decoration-none">
               <v-list-item>Recettes</v-list-item>
-              </Link>
+              </router-link>
             </v-list>
           </v-col>
         </v-row>
@@ -78,8 +78,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
+const router = useRouter()
 const showCreateModal = ref(false)
 const isSubmitting = ref(false)
 const form = ref({
@@ -88,23 +90,24 @@ const form = ref({
   ingredients: ''
 })
 
-const submitForm = () => {
+const submitForm = async () => {
   isSubmitting.value = true
-
-  router.post('/recipes', form.value, {
-    onSuccess: () => {
-      showCreateModal.value = false
-      form.value = {
-        title: '',
-        description: '',
-        ingredients: ''
-      }
-      isSubmitting.value = false
-    },
-    onError: (errors) => {
-      console.error('Erreur lors de la création:', errors)
-      isSubmitting.value = false
+  try {
+    await axios.post('/api/recipes', form.value)
+    showCreateModal.value = false
+    form.value = {
+      title: '',
+      description: '',
+      ingredients: ''
     }
-  })
+    isSubmitting.value = false
+    // Rafraîchir la page des recettes si on y est
+    if (router.currentRoute.value.name === 'recipes') {
+      router.go(0)
+    }
+  } catch (err: any) {
+    console.error('Erreur lors de la création:', err)
+    isSubmitting.value = false
+  }
 }
 </script>
