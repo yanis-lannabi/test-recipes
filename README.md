@@ -20,7 +20,7 @@ Application de gestion de recettes construite avec Laravel 11, Vue.js 3, Postgre
 ### Méthode rapide
 ```bash
 # 1. Cloner le projet
-git clone <votre-repo-url>
+git clone git@github.com:yanis-lannabi/test-recipes.git
 cd test-recipes
 
 # 2. Lancer l'installation automatique
@@ -30,7 +30,7 @@ cd test-recipes
 ### Méthode manuelle
 ```bash
 # 1. Cloner le projet
-git clone <votre-repo-url>
+git clone git@github.com:yanis-lannabi/test-recipes.git
 cd test-recipes
 
 # 2. Copier le fichier d'environnement
