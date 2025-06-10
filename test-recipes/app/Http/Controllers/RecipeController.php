@@ -12,9 +12,18 @@ class RecipeController extends Controller
     public function index()
     {
         try {
-            $recipes = Recipe::latest()
-                ->paginate(9)
-                ->withQueryString();
+            $query = Recipe::latest();
+            
+            if (request()->has('search') && !empty(request('search'))) {
+                $search = strtolower(request('search'));
+                $query->where(function($q) use ($search) {
+                    $q->whereRaw('LOWER(ingredients) LIKE ?', ['%' . $search . '%'])
+                      ->orWhereRaw('LOWER(title) LIKE ?', ['%' . $search . '%'])
+                      ->orWhereRaw('LOWER(description) LIKE ?', ['%' . $search . '%']);
+                });
+            }
+            
+            $recipes = $query->paginate(9)->withQueryString();
 
             return response()->json($recipes);
         } catch (\Exception $e) {

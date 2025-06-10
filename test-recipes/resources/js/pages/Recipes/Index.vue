@@ -3,6 +3,22 @@
     <v-container>
       <h1 class="text-h3 mb-6">Nos Recettes</h1>
 
+      <!-- Barre de recherche -->
+      <v-row class="mb-6">
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="searchQuery"
+            label="Rechercher par ingrédient"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            variant="outlined"
+            @input="handleSearch"
+            @click:clear="clearSearch"
+            placeholder="Ex: tomate, fromage, chocolat..."
+          ></v-text-field>
+        </v-col>
+      </v-row>
+
       <v-alert v-if="message" type="info" class="mb-6">
         {{ message }}
       </v-alert>
@@ -118,6 +134,8 @@ const formErrors = ref<Record<string, string>>({})
 const currentPage = ref(1)
 const showEditModal = ref(false)
 const isSubmitting = ref(false)
+const searchQuery = ref('')
+const searchTimeout = ref<NodeJS.Timeout | null>(null)
 const editForm = ref({
   id: 0,
   title: '',
@@ -125,9 +143,13 @@ const editForm = ref({
   ingredients: ''
 })
 
-const fetchRecipes = async (page = 1) => {
+const fetchRecipes = async (page = 1, search = '') => {
   try {
-    const res = await axios.get(`/api/recipes?page=${page}`)
+    const params = new URLSearchParams({ page: page.toString() })
+    if (search) {
+      params.append('search', search)
+    }
+    const res = await axios.get(`/api/recipes?${params.toString()}`)
     recipes.value = res.data
     currentPage.value = res.data.current_page
   } catch (err: any) {
@@ -135,12 +157,28 @@ const fetchRecipes = async (page = 1) => {
   }
 }
 
+const handleSearch = () => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+  searchTimeout.value = setTimeout(() => {
+    currentPage.value = 1
+    fetchRecipes(1, searchQuery.value)
+  }, 500) // Délai de 500ms pour éviter trop de requêtes
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  currentPage.value = 1
+  fetchRecipes(1)
+}
+
 onMounted(() => {
   fetchRecipes()
 })
 
 const handlePageChange = (page: number) => {
-  fetchRecipes(page)
+  fetchRecipes(page, searchQuery.value)
 }
 
 const openEditModal = (recipe: any) => {
