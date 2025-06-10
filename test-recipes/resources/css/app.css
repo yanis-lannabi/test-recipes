@@ -165,3 +165,108 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Base reset */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Responsive typography */
+@media (max-width: 600px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+@media (min-width: 1200px) {
+    html {
+        font-size: 18px;
+    }
+}
+
+/* Smooth scrolling */
+html {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Transitions */
+@media (prefers-reduced-motion: no-preference) {
+    * {
+        transition: all 0.2s ease;
+    }
+}
+
+/* Vuetify overrides */
+.v-container {
+    max-width: 100% !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+}
+
+@media (min-width: 600px) {
+    .v-container {
+        padding-left: 24px !important;
+        padding-right: 24px !important;
+    }
+}
+
+/* Card responsive styles */
+.v-card {
+    border-radius: 8px !important;
+}
+
+@media (max-width: 600px) {
+    .v-card {
+        border-radius: 4px !important;
+    }
+    
+    .v-card-text {
+        padding: 12px !important;
+    }
+    
+    .v-card-actions {
+        padding: 8px 12px !important;
+    }
+}
+
+/* Button responsive styles */
+@media (max-width: 600px) {
+    .v-btn {
+        min-height: 44px !important;
+        font-size: 14px !important;
+    }
+    
+    .v-btn--size-small {
+        min-height: 36px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* Modal responsive styles */
+@media (max-width: 600px) {
+    .v-dialog > .v-card {
+        margin: 16px !important;
+        border-radius: 8px !important;
+    }
+}
+
+/* Touch targets */
+.v-list-item, .v-btn, .v-text-field, .v-textarea {
+    min-height: 44px;
+}
+
+/* Performance optimization */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    .v-ripple__container {
+        display: none !important;
+    }
+}

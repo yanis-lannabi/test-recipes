@@ -1,66 +1,70 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { 
+  fetchRecipes, 
+  updateRecipe, 
+  deleteRecipe, 
+  formatValidationErrors,
+  createDebouncedSearch 
+} from '@/lib/api'
+import type { PaginatedRecipes, CreateRecipeData } from '@/lib/api'
 import Layout from '@/components/Layout.vue'
 
 const router = useRouter()
 
-const recipes = ref({
+const recipes = ref<PaginatedRecipes>({
   data: [],
   current_page: 1,
-  last_page: 1
+  last_page: 1,
+  per_page: 10,
+  total: 0
 })
+
 const message = ref('')
 const formErrors = ref<Record<string, string>>({})
 const currentPage = ref(1)
 const showEditModal = ref(false)
 const isSubmitting = ref(false)
 const searchQuery = ref('')
-const searchTimeout = ref<NodeJS.Timeout | null>(null)
-const editForm = ref({
+
+const editForm = ref<CreateRecipeData & { id: number }>({
   id: 0,
   title: '',
   description: '',
   ingredients: ''
 })
 
-const fetchRecipes = async (page = 1, search = '') => {
+const loadRecipes = async (page = 1, search = '') => {
   try {
-    const params = new URLSearchParams({ page: page.toString() })
-    if (search) {
-      params.append('search', search)
-    }
-    const res = await axios.get(`/api/recipes?${params.toString()}`)
-    recipes.value = res.data
-    currentPage.value = res.data.current_page
-  } catch (err: any) {
-    message.value = 'Erreur lors du chargement des recettes.'
+    const data = await fetchRecipes(page, search)
+    recipes.value = data
+    currentPage.value = data.current_page
+    message.value = ''
+  } catch (error: any) {
+    message.value = error.message || 'Erreur lors du chargement des recettes.'
+    console.error('Erreur lors du chargement:', error)
   }
 }
 
+// Création d'une fonction de recherche avec debouncing
+const debouncedSearch = createDebouncedSearch(async (query: string) => {
+  currentPage.value = 1
+  await loadRecipes(1, query)
+}, 500)
+
 const handleSearch = () => {
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value)
-  }
-  searchTimeout.value = setTimeout(() => {
-    currentPage.value = 1
-    fetchRecipes(1, searchQuery.value)
-  }, 500) // Délai de 500ms pour éviter trop de requêtes
+  debouncedSearch(searchQuery.value)
 }
 
 const clearSearch = () => {
   searchQuery.value = ''
   currentPage.value = 1
-  fetchRecipes(1)
+  loadRecipes(1)
 }
 
-onMounted(() => {
-  fetchRecipes()
-})
-
 const handlePageChange = (page: number) => {
-  fetchRecipes(page, searchQuery.value)
+  loadRecipes(page, searchQuery.value)
 }
 
 const openEditModal = (recipe: any) => {
@@ -88,41 +92,57 @@ const clearError = (field: string) => {
 const submitEditForm = async () => {
   isSubmitting.value = true
   formErrors.value = {}
+  
   try {
-    await axios.put(`/api/recipes/${editForm.value.id}`, editForm.value)
+    await updateRecipe(editForm.value.id, {
+      title: editForm.value.title,
+      description: editForm.value.description,
+      ingredients: editForm.value.ingredients
+    })
+    
     showEditModal.value = false
-    isSubmitting.value = false
-    fetchRecipes(currentPage.value)
-  } catch (err: any) {
-    if (err.response && err.response.status === 422 && err.response.data.errors) {
-      formErrors.value = err.response.data.errors
-    } else {
-      message.value = 'Erreur lors de la modification.'
+    await loadRecipes(currentPage.value, searchQuery.value)
+    message.value = ''
+  } catch (error: any) {
+    formErrors.value = formatValidationErrors(error)
+    if (!Object.keys(formErrors.value).length) {
+      message.value = error.message || 'Erreur lors de la modification.'
     }
+  } finally {
     isSubmitting.value = false
   }
 }
 
-const deleteRecipe = async (id: number) => {
+const confirmDeleteRecipe = async (id: number) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer cette recette ?')) {
     try {
-      await axios.delete(`/api/recipes/${id}`)
-      fetchRecipes(currentPage.value)
-    } catch (err) {
-      message.value = 'Erreur lors de la suppression.'
+      await deleteRecipe(id)
+      await loadRecipes(currentPage.value, searchQuery.value)
+      message.value = ''
+    } catch (error: any) {
+      message.value = error.message || 'Erreur lors de la suppression.'
+      console.error('Erreur lors de la suppression:', error)
     }
   }
 }
+
+const navigateToRecipe = (recipeId: number) => {
+  router.push(`/recipes/${recipeId}`)
+}
+
+onMounted(() => {
+  loadRecipes()
+})
 </script>
 
 <template>
   <Layout>
-    <v-container>
-      <h1 class="text-h3 mb-6">Nos Recettes</h1>
+    <v-container class="py-4 py-md-8">
+      <h1 class="text-h4 text-md-h3 mb-6 text-center text-md-left">Nos Recettes</h1>
 
-      <!-- Barre de recherche -->
+      <!-- Barre de recherche responsive -->
       <v-row class="mb-6">
-        <v-col cols="12" md="6">
+        <v-col cols="12" md="8" lg="6">
           <v-text-field
             v-model="searchQuery"
             label="Rechercher par ingrédient"
@@ -132,6 +152,7 @@ const deleteRecipe = async (id: number) => {
             @input="handleSearch"
             @click:clear="clearSearch"
             placeholder="Ex: tomate, fromage, chocolat..."
+            density="comfortable"
           ></v-text-field>
         </v-col>
       </v-row>
@@ -146,51 +167,110 @@ const deleteRecipe = async (id: number) => {
         </div>
       </v-alert>
 
+      <!-- Grille de recettes responsive -->
       <v-row v-if="recipes.data && recipes.data.length > 0">
-        <v-col v-for="recipe in recipes.data" :key="recipe.id" cols="12" md="4">
-          <v-card>
-            <v-card-title>{{ recipe.title }}</v-card-title>
-            <v-card-text>
-              <p>{{ recipe.description }}</p>
-              <p class="text-caption">Ingrédients: {{ recipe.ingredients }}</p>
+        <v-col 
+          v-for="recipe in recipes.data" 
+          :key="recipe.id" 
+          cols="12" 
+          sm="6" 
+          md="4" 
+          lg="3"
+        >
+          <v-card 
+            class="h-100 d-flex flex-column recipe-card" 
+            hover 
+            elevation="2"
+            @click="navigateToRecipe(recipe.id)"
+          >
+            <v-card-title class="text-h6">{{ recipe.title }}</v-card-title>
+            <v-card-text class="flex-grow-1">
+              <p class="text-body-2 mb-2">{{ recipe.description }}</p>
+              <p class="text-caption text-medium-emphasis">
+                <v-icon size="small" class="mr-1">mdi-food-variant</v-icon>
+                {{ recipe.ingredients }}
+              </p>
             </v-card-text>
-            <v-card-actions>
-              <v-btn color="primary" :to="`/recipes/${recipe.id}`">
-                Voir la recette
-              </v-btn>
-            </v-card-actions>
-            <v-card-actions>
-              <v-btn color="primary" @click="openEditModal(recipe)">
-                Modifier
-              </v-btn>
-            </v-card-actions>
-            <v-card-actions>
-              <v-btn color="error" @click="deleteRecipe(recipe.id)">
-                Supprimer
-              </v-btn>
+            
+            <!-- Actions responsive -->
+            <v-card-actions class="pt-0" @click.stop>
+              <div class="d-flex flex-column flex-sm-row gap-2 w-100">
+                <v-btn 
+                  color="primary" 
+                  :to="`/recipes/${recipe.id}`"
+                  size="small"
+                  variant="outlined"
+                  :block="$vuetify.display.xs"
+                >
+                  <v-icon left size="small">mdi-eye</v-icon>
+                  Voir
+                </v-btn>
+                <v-btn 
+                  color="primary" 
+                  @click="openEditModal(recipe)"
+                  size="small"
+                  :block="$vuetify.display.xs"
+                >
+                  <v-icon left size="small">mdi-pencil</v-icon>
+                  <span class="d-none d-sm-inline">Modifier</span>
+                  <span class="d-inline d-sm-none">Éditer</span>
+                </v-btn>
+                <v-btn 
+                  color="error" 
+                  @click="confirmDeleteRecipe(recipe.id)"
+                  size="small"
+                  variant="outlined"
+                  :block="$vuetify.display.xs"
+                >
+                  <v-icon left size="small">mdi-delete</v-icon>
+                  <span class="d-none d-sm-inline">Supprimer</span>
+                  <span class="d-inline d-sm-none">Sup.</span>
+                </v-btn>
+              </div>
             </v-card-actions>
           </v-card>
         </v-col>
       </v-row>
 
-      <v-alert v-else-if="recipes.data && recipes.data.length === 0" type="info" class="mb-6">
-        Aucune recette trouvée.
+      <v-alert v-else-if="recipes.data && recipes.data.length === 0" type="info" class="mb-6 text-center">
+        <v-icon class="mb-2">mdi-information-outline</v-icon>
+        <div>Aucune recette trouvée.</div>
+        <div v-if="searchQuery" class="text-caption mt-2">
+          Essayez un autre terme de recherche
+        </div>
       </v-alert>
 
-      <!-- Pagination -->
-      <div class="text-center mt-6" v-if="recipes.data && recipes.data.length > 0">
-        <v-pagination v-model="currentPage" :length="recipes.last_page"
-          @update:model-value="handlePageChange"></v-pagination>
+      <!-- Pagination responsive -->
+      <div class="text-center mt-8" v-if="recipes.data && recipes.data.length > 0 && recipes.last_page > 1">
+        <v-pagination 
+          v-model="currentPage" 
+          :length="recipes.last_page"
+          :total-visible="$vuetify.display.mobile ? 5 : 7"
+          @update:model-value="handlePageChange"
+          size="small"
+        ></v-pagination>
       </div>
 
-      <!-- Modal de modification -->
-      <v-dialog v-model="showEditModal" max-width="600px">
+      <!-- Modal de modification responsive -->
+      <v-dialog 
+        v-model="showEditModal" 
+        :max-width="$vuetify.display.mobile ? '95%' : '600px'" 
+        :fullscreen="$vuetify.display.xs"
+      >
         <v-card>
-          <v-card-title class="text-h5">
+          <v-card-title class="text-h5 d-flex align-center">
             Modifier la recette
+            <v-spacer></v-spacer>
+            <v-btn 
+              v-if="$vuetify.display.mobile" 
+              icon="mdi-close" 
+              variant="text" 
+              size="small"
+              @click="closeModal"
+            ></v-btn>
           </v-card-title>
 
-          <v-card-text>
+          <v-card-text class="pb-2">
             <v-form @submit.prevent="submitEditForm">
               <v-text-field 
                 v-model="editForm.title" 
@@ -198,6 +278,7 @@ const deleteRecipe = async (id: number) => {
                 required
                 :error-messages="formErrors.title"
                 @input="clearError('title')"
+                density="comfortable"
               ></v-text-field>
 
               <v-textarea 
@@ -206,6 +287,8 @@ const deleteRecipe = async (id: number) => {
                 required
                 :error-messages="formErrors.description"
                 @input="clearError('description')"
+                rows="3"
+                density="comfortable"
               ></v-textarea>
 
               <v-textarea 
@@ -214,16 +297,29 @@ const deleteRecipe = async (id: number) => {
                 required
                 :error-messages="formErrors.ingredients"
                 @input="clearError('ingredients')"
+                rows="3"
+                density="comfortable"
               ></v-textarea>
             </v-form>
           </v-card-text>
 
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn color="grey-darken-1" variant="text" @click="closeModal">
+          <v-card-actions class="px-6 pb-4">
+            <v-spacer v-if="!$vuetify.display.mobile"></v-spacer>
+            <v-btn 
+              color="grey-darken-1" 
+              variant="text" 
+              @click="closeModal"
+              :block="$vuetify.display.mobile"
+              class="mb-2 mb-sm-0"
+            >
               Annuler
             </v-btn>
-            <v-btn color="primary" :loading="isSubmitting" @click="submitEditForm">
+            <v-btn 
+              color="primary" 
+              :loading="isSubmitting" 
+              @click="submitEditForm"
+              :block="$vuetify.display.mobile"
+            >
               Enregistrer
             </v-btn>
           </v-card-actions>
@@ -232,8 +328,21 @@ const deleteRecipe = async (id: number) => {
     </v-container>
   </Layout>
 </template>
+
 <style scoped>
-.v-alert {
-  margin-bottom: 1rem;
+.recipe-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recipe-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+@media (max-width: 600px) {
+  .recipe-card:hover {
+    transform: none;
+  }
 }
 </style>
