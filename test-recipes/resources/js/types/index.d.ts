@@ -36,3 +36,16 @@ export interface User {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+export interface Recipe {
+    id: number
+    title: string
+    description: string
+    ingredients: string
+}
+
+export interface Ingredient {
+    name: string
+    quantity: number
+    unit: string
+}
